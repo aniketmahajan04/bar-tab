@@ -38,6 +38,6 @@ Follow these quick setup commands to clone and compile the source layout directl
 Compile the Source Code
 Run the terminal build step below, using pkg-config to pass compiler search headers and automated library mappings:
 
-```bash
+   ```bash
     gcc main.c -o wayland-todo $(pkg-config --cflags --libs gtk+-3.0 gtk-layer-shell-0 pangocairo glib-2.0)
 ```
