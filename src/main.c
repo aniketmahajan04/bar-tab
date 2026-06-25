@@ -17,6 +17,7 @@
 
 typedef struct {
   GtkWidget *main_vbox;
+  GtkWidget *task_list_box; // <- Add this to hold your scrollable tasks
   GtkWidget *entry;
   GtkWidget *popover;
   GtkWidget *placeholder_label;
@@ -46,7 +47,7 @@ static void save_task_to_disk(TodoAppData *app_data) {
   }
 
   GList *children =
-      gtk_container_get_children(GTK_CONTAINER(app_data->main_vbox));
+      gtk_container_get_children(GTK_CONTAINER(app_data->task_list_box));
 
   for (GList *iter = children; iter != NULL; iter = iter->next) {
     GtkWidget *row_box = GTK_WIDGET(iter->data);
@@ -313,21 +314,19 @@ static void on_delete_clicked(GtkWidget *button, gpointer user_data) {
   TodoAppData *app_data = row_data->app_data;
 
   // 1. Destroy the horizontal layout row container
-  gtk_container_remove(GTK_CONTAINER(app_data->main_vbox), row_data->box);
+  gtk_container_remove(GTK_CONTAINER(app_data->task_list_box), row_data->box);
 
   save_task_to_disk(app_data);
 
   // 2. Safely free up the heap allocated struct data
-  gtk_widget_destroy(row_data->box);
+  // gtk_widget_destroy(row_data->box);
   g_free(row_data);
 
   // 3. Get all current children inside the vertical container
   GList *children =
-      gtk_container_get_children(GTK_CONTAINER(app_data->main_vbox));
+      gtk_container_get_children(GTK_CONTAINER(app_data->task_list_box));
 
-  // Note: header_box + placeholder_lable = 2 non-todo child elements
-  // If count is 2, it means there are absolutely NO activate task left!
-  if (g_list_length(children) <= 2) {
+  if (g_list_length(children) == 0) {
     gtk_widget_show(app_data->placeholder_label);
   }
   g_list_free(children);
@@ -401,8 +400,8 @@ static void on_task_entry_activated(GtkEntry *entry, gpointer user_data) {
     gtk_box_pack_end(GTK_BOX(new_task_hbox), comp_btn, FALSE, FALSE, 0);
 
     // Packing the new row into our main vertical layout container
-    gtk_box_pack_start(GTK_BOX(data->main_vbox), new_task_hbox, FALSE, FALSE,
-                       0);
+    gtk_box_pack_start(GTK_BOX(data->task_list_box), new_task_hbox, FALSE,
+                       FALSE, 0);
 
     // This will force the GTK to instantly draw the new elements on screen
     gtk_widget_show_all(new_task_hbox);
@@ -462,7 +461,8 @@ static void append_task_row_from_text(TodoAppData *data, const gchar *text) {
   gtk_box_pack_end(GTK_BOX(new_task_hbox), edit_btn, FALSE, FALSE, 0);
   gtk_box_pack_end(GTK_BOX(new_task_hbox), comp_btn, FALSE, FALSE, 0);
 
-  gtk_box_pack_start(GTK_BOX(data->main_vbox), new_task_hbox, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(data->task_list_box), new_task_hbox, FALSE, FALSE,
+                     0);
 
   gtk_widget_show_all(new_task_hbox);
 }
@@ -600,21 +600,33 @@ void build_ui(GtkWidget *window) {
   g_signal_connect(entry, "activate", G_CALLBACK(on_task_entry_activated),
                    &data);
 
+  data.task_list_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+
+  // Scrollabel Widget
+  GtkWidget *scrollabel_vbox = gtk_scrolled_window_new(NULL, NULL);
+
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrollabel_vbox),
+                                 GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+
+  gtk_container_add(GTK_CONTAINER(scrollabel_vbox), data.task_list_box);
+  gtk_box_pack_start(GTK_BOX(main_vbox), scrollabel_vbox, TRUE, TRUE, 0);
+
   gtk_container_add(GTK_CONTAINER(window), main_vbox);
 
   load_tasks_from_disk(&data);
 
   gtk_widget_show_all(window);
 
-  GList *children = gtk_container_get_children(GTK_CONTAINER(data.main_vbox));
+  GList *task_children =
+      gtk_container_get_children(GTK_CONTAINER(data.task_list_box));
 
-  if (g_list_length(children) <= 2) {
+  if (g_list_length(task_children) == 0) {
     gtk_widget_show(data.placeholder_label);
   } else {
     gtk_widget_hide(data.placeholder_label);
   }
 
-  g_list_free(children);
+  g_list_free(task_children);
 }
 
 GtkWidget *create_window() {
