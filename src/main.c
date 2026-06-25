@@ -700,7 +700,7 @@ GtkWidget *create_window() {
 
   gtk_layer_set_keyboard_interactivity(GTK_WINDOW(window), TRUE);
 
-  gtk_widget_set_size_request(GTK_WIDGET(window), 400, 200);
+  gtk_widget_set_size_request(GTK_WIDGET(window), 400, 300);
   gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, 0);
   gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_RIGHT, 10);
 
