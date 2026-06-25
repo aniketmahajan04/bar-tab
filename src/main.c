@@ -66,9 +66,18 @@ static void save_task_to_disk(TodoAppData *app_data) {
       if (GTK_IS_LABEL(label)) {
         const gchar *text = gtk_label_get_text(GTK_LABEL(label));
 
+        gchar *current_markup = (gchar *)gtk_label_get_label(GTK_LABEL(label));
+        gboolean is_completed = (g_str_has_prefix(current_markup, "<s>") ||
+                                 current_markup[0] == '<');
+
         // Only save active text (ignores markup formatting tags)
         if (text && text[0] != '<') {
-          fprintf(file, "%s\n", text);
+          if (is_completed) {
+
+            fprintf(file, "[DONE] %s\n", text);
+          } else {
+            fprintf(file, "[TODO] %s\n", text);
+          }
         }
       }
       g_list_free(row_elements);
@@ -338,7 +347,9 @@ static void on_complete_clicked(GtkWidget *button, gpointer user_data) {
 
   const gchar *current_text = gtk_label_get_text(GTK_LABEL(row_data->label));
 
-  if (current_text[0] == '<') {
+  gchar *current_markup =
+      (gchar *)gtk_label_get_label(GTK_LABEL(row_data->label));
+  if (g_str_has_prefix(current_text, "<s>") || current_markup[0] == '<') {
     return;
   }
 
@@ -348,6 +359,8 @@ static void on_complete_clicked(GtkWidget *button, gpointer user_data) {
   gtk_label_set_markup(GTK_LABEL(row_data->label), marked_up_text);
 
   g_free(marked_up_text);
+
+  save_task_to_disk(row_data->app_data);
 }
 
 static void on_task_entry_activated(GtkEntry *entry, gpointer user_data) {
@@ -512,15 +525,48 @@ static void load_tasks_from_disk(TodoAppData *app_data) {
     line[strcspn(line, "\n")] = 0;
 
     if (g_strcmp0(line, "") != 0) {
-      append_task_row_from_text(app_data, line);
-      loaded_tasks++;
+      // append_task_row_from_text(app_data, line);
+      // loaded_tasks++;
 
-      if (loaded_tasks >= MAX_TODO_TASKS) {
-        g_printerr("Warning: Loaded %u tasks (limit reached). Extra lines "
-                   "ignored.\n",
-                   MAX_TODO_TASKS);
-        break;
+      // if (loaded_tasks >= MAX_TODO_TASKS) {
+      //   g_printerr("Warning: Loaded %u tasks (limit reached). Extra lines "
+      //              "ignored.\n",
+      //              MAX_TODO_TASKS);
+      //   break;
+      // }
+      gboolean is_done = FALSE;
+      char *task_text = line;
+
+      if (g_str_has_prefix(line, "[DONE] ")) {
+        is_done = TRUE;
+        task_text = line + 7;
+      } else if (g_str_has_prefix(line, "[TODO]")) {
+        task_text = line + 7;
       }
+
+      append_task_row_from_text(app_data, task_text);
+
+      if (is_done) {
+        GList *children =
+            gtk_container_get_children(GTK_CONTAINER(app_data->task_list_box));
+        GtkWidget *latest_row = GTK_WIDGET(g_list_last(children)->data);
+        GList *row_elements =
+            gtk_container_get_children(GTK_CONTAINER(latest_row));
+        GtkWidget *label = GTK_WIDGET(row_elements->data);
+
+        gchar *marked_up_text = g_strdup_printf(
+            "<s><span foreground='#505a5c'>%s</span></s>", task_text);
+
+        gtk_label_set_markup(GTK_LABEL(label), marked_up_text);
+        g_free(marked_up_text);
+
+        g_list_free(row_elements);
+        g_list_free(children);
+      }
+
+      loaded_tasks++;
+      if (loaded_tasks >= MAX_TODO_TASKS)
+        break;
     }
   }
 
