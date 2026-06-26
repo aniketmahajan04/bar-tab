@@ -302,7 +302,30 @@ void custom_css(void) {
                            "  border: 1px solid #2a2d36;\n"
                            "  border-radius: 6px;\n"
                            "  padding: 6px;\n"
-                           "}\n";
+                           "}\n"
+                           "\n"
+                           "tooltip {\n"
+                           "  background-color: transparent ;\n"
+                           "  background-image: none;\n"
+                           "  border: none;\n"
+                           "  padding: 0;\n"
+                           "  box-shadow: none;\n"
+                           "}\n"
+                           "\n"
+                           "tooltip > decoration {\n"
+                           "  background-color: #1e2024;\n"
+                           "  border: 1px solid #2a2d36;\n"
+                           "  border-radius: 8px;\n"
+                           "  padding: 1px 2px;\n"
+                           "}\n"
+                           "\n"
+                           "tooltip label {\n"
+                           "  color: #cdd6f4;\n"
+                           "  font-family: \"JetBrainsMono Nerd Font\", \"Font "
+                           "Awesome 6 Free\", sans-serif;\n"
+                           "  font-size: 12px;\n"
+                           "}\n"
+                           "\n";
 
   gtk_css_provider_load_from_data(provider, css_style, -1, NULL);
 
@@ -429,6 +452,8 @@ static void on_task_entry_activated(GtkEntry *entry, gpointer user_data) {
 
     gtk_label_set_ellipsize(GTK_LABEL(new_label), PANGO_ELLIPSIZE_END);
     gtk_label_set_max_width_chars(GTK_LABEL(new_label), 24);
+
+    gtk_widget_set_tooltip_text(new_label, text);
     GtkWidget *comp_btn = gtk_button_new_from_icon_name(
         "object-select-symbolic", GTK_ICON_SIZE_BUTTON);
     GtkWidget *edit_btn = gtk_button_new_from_icon_name(
@@ -492,6 +517,9 @@ static void append_task_row_from_text(TodoAppData *data, const gchar *text) {
   gtk_label_set_xalign(GTK_LABEL(new_label), 0.0);
   gtk_label_set_ellipsize(GTK_LABEL(new_label), PANGO_ELLIPSIZE_END);
   gtk_label_set_max_width_chars(GTK_LABEL(new_label), 24);
+
+  // tool tip for label restores the full visibility of label
+  gtk_widget_set_tooltip_text(new_label, text);
 
   GtkWidget *comp_btn = gtk_button_new_from_icon_name("object-select-symbolic",
                                                       GTK_ICON_SIZE_BUTTON);
