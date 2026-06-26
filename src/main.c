@@ -7,6 +7,7 @@
 #include <asm-generic/errno.h>
 #include <gtk-layer-shell.h>
 #include <gtk/gtk.h>
+#include <iso646.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,6 +22,7 @@ typedef struct {
   GtkWidget *entry;
   GtkWidget *popover;
   GtkWidget *placeholder_label;
+  GtkWidget *todo_count_label; // <- Todo completed/total labels
 } TodoAppData;
 
 typedef struct {
@@ -35,6 +37,44 @@ static gchar *get_todo_file_path() {
 
 // forward declaration so functions can trigger saves interchangeabley
 static void save_task_to_disk(TodoAppData *app_data);
+static void update_global_counter(TodoAppData *app_data);
+
+static void update_global_counter(TodoAppData *app_data) {
+  guint total_todos = 0;
+  guint completed_todos = 0;
+
+  GList *children =
+      gtk_container_get_children(GTK_CONTAINER(app_data->task_list_box));
+  for (GList *iter = children; iter != NULL; iter = iter->next) {
+    GtkWidget *row_box = GTK_WIDGET(iter->data);
+    if (row_box == app_data->placeholder_label)
+      continue;
+
+    GList *row_elements = gtk_container_get_children(GTK_CONTAINER(row_box));
+    if (row_elements) {
+      GtkWidget *label = GTK_WIDGET(row_elements->data);
+      if (GTK_IS_LABEL(label)) {
+        total_todos++;
+        gchar *current_markup = (gchar *)gtk_label_get_label(GTK_LABEL(label));
+
+        if (g_str_has_prefix(current_markup, "<s>") ||
+            current_markup[0] == '<') {
+          completed_todos++;
+        }
+      }
+      g_list_free(row_elements);
+    }
+  }
+  g_list_free(children);
+
+  gchar *counter_markup =
+      g_strdup_printf("<span foreground='#cdd6f4'>%u</span>/<span "
+                      "foreground='#5FAD56'>%u Done</span>",
+                      total_todos, completed_todos);
+
+  gtk_label_set_markup(GTK_LABEL(app_data->todo_count_label), counter_markup);
+  g_free(counter_markup);
+}
 
 static void save_task_to_disk(TodoAppData *app_data) {
   gchar *file_path = get_todo_file_path();
@@ -129,6 +169,12 @@ void custom_css(void) {
                            "  color: #565f89;\n"
                            "  font-weight: bold;\n"
                            "  font-size: 15px;\n"
+                           "}\n"
+                           "\n"
+                           ".counter_label {\n"
+                           "  color: #565f89;\n"
+                           "  font-size: 13px;\n"
+                           "  font-weight: bold;\n"
                            "}\n"
                            "\n"
                            ".header-button {\n"
@@ -286,6 +332,7 @@ static void on_edit_done(GtkEntry *entry, gpointer user_data) {
 
   // Trigger sync to system storage file directly here
   save_task_to_disk(row->app_data);
+  update_global_counter(row->app_data);
 }
 
 static void on_edit_clicked(GtkWidget *button, gpointer user_data) {
@@ -326,6 +373,7 @@ static void on_delete_clicked(GtkWidget *button, gpointer user_data) {
   gtk_container_remove(GTK_CONTAINER(app_data->task_list_box), row_data->box);
 
   save_task_to_disk(app_data);
+  update_global_counter(app_data);
 
   // 2. Safely free up the heap allocated struct data
   // gtk_widget_destroy(row_data->box);
@@ -361,6 +409,7 @@ static void on_complete_clicked(GtkWidget *button, gpointer user_data) {
   g_free(marked_up_text);
 
   save_task_to_disk(row_data->app_data);
+  update_global_counter(row_data->app_data);
 }
 
 static void on_task_entry_activated(GtkEntry *entry, gpointer user_data) {
@@ -425,6 +474,7 @@ static void on_task_entry_activated(GtkEntry *entry, gpointer user_data) {
 
     // save to file by handing over the data
     save_task_to_disk(data);
+    update_global_counter(data);
   }
 }
 
@@ -571,6 +621,7 @@ static void load_tasks_from_disk(TodoAppData *app_data) {
   }
 
   fclose(file);
+  update_global_counter(app_data);
 }
 
 void build_ui(GtkWidget *window) {
@@ -582,14 +633,19 @@ void build_ui(GtkWidget *window) {
   GtkWidget *header_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
   gtk_widget_set_name(header_box, "header-box");
 
-  GtkWidget *title_label = gtk_label_new("Todo");
+  GtkWidget *title_label = gtk_label_new("BarTab");
   gtk_style_context_add_class(gtk_widget_get_style_context(title_label),
                               "header-label");
-  gtk_widget_set_margin_end(title_label, 16);
+  // gtk_widget_set_margin_end(title_label, 16);
+
+  data.todo_count_label = gtk_label_new("");
+  gtk_style_context_add_class(
+      gtk_widget_get_style_context(data.todo_count_label), "counter-label");
+  gtk_widget_set_margin_start(data.todo_count_label, 6);
 
   GtkWidget *add_button =
       gtk_button_new_from_icon_name("list-add-symbolic", GTK_ICON_SIZE_BUTTON);
-  gtk_widget_set_margin_start(add_button, 180);
+  gtk_widget_set_margin_start(add_button, 120);
 
   GtkWidget *closing_button = gtk_button_new_from_icon_name(
       "window-close-symbolic", GTK_ICON_SIZE_BUTTON);
@@ -602,6 +658,8 @@ void build_ui(GtkWidget *window) {
   g_signal_connect(closing_button, "clicked", G_CALLBACK(gtk_main_quit), NULL);
 
   gtk_box_pack_start(GTK_BOX(header_box), title_label, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(header_box), data.todo_count_label, FALSE, FALSE,
+                     0);
   gtk_box_pack_end(GTK_BOX(header_box), closing_button, FALSE, FALSE, 0);
   gtk_box_pack_end(GTK_BOX(header_box), add_button, FALSE, FALSE, 0);
 
