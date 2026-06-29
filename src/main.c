@@ -171,7 +171,7 @@ void custom_css(void) {
                            "  font-size: 15px;\n"
                            "}\n"
                            "\n"
-                           ".counter_label {\n"
+                           ".counter-label {\n"
                            "  color: #565f89;\n"
                            "  font-size: 13px;\n"
                            "  font-weight: bold;\n"
@@ -784,7 +784,9 @@ GtkWidget *create_window() {
 
   gtk_layer_set_layer(GTK_WINDOW(window), GTK_LAYER_SHELL_LAYER_TOP);
 
-  gtk_layer_set_keyboard_interactivity(GTK_WINDOW(window), TRUE);
+  // gtk_layer_set_keyboard_interactivity(GTK_WINDOW(window), TRUE);
+  gtk_layer_set_keyboard_mode(GTK_WINDOW(window),
+                              GTK_LAYER_SHELL_KEYBOARD_MODE_ON_DEMAND);
 
   gtk_widget_set_size_request(GTK_WIDGET(window), 400, 300);
   gtk_layer_set_margin(GTK_WINDOW(window), GTK_LAYER_SHELL_EDGE_TOP, 0);
